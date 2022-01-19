@@ -1,29 +1,26 @@
-# -*- coding: utf-8 -*-
-"""A module to read xyz-formatted files.
-
-This module reads files in .xyz format.  This file can also be run as a script to convert xyz files
-into several other formats.  Currently supported formats are csv and cel.  Written by Charles
-Evans.
-
-Todo:
-    * Import from other formats and output to xyz
-    * Implement other output formats (cif, maybe z-matrix)
-    * Command line argument version w/o live user interaction
 """
+This module reads files in .xyz format.  This file can also be run as a script to convert xyz files
+into several other formats.  Currently supported formats are csv and cel.
 
+:Todo:
+    * Import from other formats and output to xyz
+    * Implement other I/O formats (cif, maybe z-matrix)
+"""
 ####################
 # Importable Class #
 ####################
 
+
 class XYZ:
-    """A class to contain the data of an .xyz file in an accessible format.
+    """
+    A class to contain the data of an .xyz file in an accessible format.
 
-    Attributes:
-        num_sites (int): The number of described atomic sites
-
-        comment_string (str): An arbitraty comment string
-
-        sites (list(E,x,y,z)): A list of tuples containing site information (E is the element)
+    :Attributes:
+        :num_sites (int): Number of atomic sites represented in the object (should be equal to
+            len(sites))
+        :comment_string (str): An arbitraty comment string
+        :sites (list): Contians site information tuples (E, x, y, z) where E is the element
+            shortname and x, y, and z are coordinate positions in angstroms
     """
 
     def __init__(self, num_sites, comment_string, sites):
@@ -39,13 +36,15 @@ class XYZ:
 
 
 def readXYZ(file):
-    """Read in an .xyz formatted file, return an instance of XYZ class.
+    """
+    Reads in an .xyz formatted file, return an instance of XYZ class.
 
-    Args:
-        file (str): The path to the xyz file to be read
-
-    Returns:
-        XYZ: An initialized XYZ object containing the information from the file
+    :Params:
+        :file (file object): An xyz-formatted file object, for example the result of
+            open(/path/to/file.xyz); note that this method currently does not sanity check the file
+            content, and if it is malformed this method may silently misbehave
+    :Returns:
+        :XYZ object: An initialized XYZ object containing the information from the file
     """
     # TODO: Sanity checking (file format is as expected) should be implemented
     lines = file.readlines()
@@ -68,12 +67,12 @@ def readXYZ(file):
 
 
 def writeXYZ(xyz_obj, outfile):
-    """Export an xyz-formatted file.
+    """
+    Exports an xyz-formatted file.
 
-    Args:
-        xyz_obj (XYZ): An initialized XYZ object containing the information to be written
-
-        outfile (str): The path to the file which will be written
+    :Params:
+        :xyz_obj (XYZ object): An initialized XYZ object containing the information to be written
+        :outfile (str): The path to the file which will be written, including the file extension
     """
     with open(outfile, 'w') as file:
         file.write(xyz_obj.num_sites, "\n")
@@ -88,96 +87,82 @@ def writeXYZ(xyz_obj, outfile):
 #################
 
 def _parse_args(args):
+    """
+    Command line argument parser.  This is almost always used like...
+
+        >>> opts = _parse_args(sys.argv)
+
+    :Params:
+        :args (list): A list of strings to parse into arguments
+
+    """
     parser = argparse.ArgumentParser(
-        description="Convert back and forth from the .xyz file format")
+        description="Convert from the .xyz file format.")
     parser.add_argument("infile", nargs="+", default="",
-                        help="The path to the input file; currently only supports xyz files.  Multiple files can be passed at once for batch conversion (in this case don't pass an outfile name, let the program infer names).")
-    parser.add_argument("--outfile", nargs="?", default="",
-                        help="The path to the output file.  If not specified, uses the same path as the input file with a new extension appropriate to --type.")
-    parser.add_argument("--type", action="append", nargs="+", choices=["cel", "csv"],
-                        help="The type of file to output; multiple types may be listed at once, or type can be inferred from file extension of --outfile if provided.")
+                        help="The path to the input file; currently only supports xyz files as " +
+                             "input.  Multiple files can be passed at once for batch conversion.")
+    parser.add_argument("--outfile", nargs="+",
+                        help="The path to the output file.  If not specified, uses the same " +
+                             "path as the input file with a new extension appropriate to " +
+                             "--type.  If multuple infiles are specified, do not use this " +
+                             "argument.")
+    parser.add_argument("--type", nargs="+", choices=["cel", "csv"],
+                        help="The type of file to output; multiple types may be listed at once, " +
+                             "or type can be inferred from file extension of --outfile if " +
+                             "provided.")
     parser.add_argument("--overwrite", action="store_true",
-                        help="Allow file overwriting on output if the output file already exists (default is to not allow overwriting).")
+                        help="Allow file overwriting on output if the output file already " +
+                             "exists (default behavior is to not allow overwriting).")
     # Add additional filetypes to choices as they're implemented
     opts = parser.parse_args()
     return opts
 
 
-def _progressBar(iterable, prefix='', suffix='', decimals=1, length=50, fill='█', printEnd="\r"):
-    r"""Call in a loop to create terminal progress bar.
-
-       Written by stackoverflow user Greenstick.
-
-    Args:
-        iterable (Iterable): Iterable object
-
-        prefix (str, optional): Prefix string
-
-        suffix (str, optional): Suffix string
-
-        decimals (int, optional): Positive number of decimals in percent complete
-
-        length (int, optional): Character length of bar
-
-        fill (str, optional): Bar fill character
-
-        printEnd (str, optional): End character (e.g. "\r", "\r \n")
+def _write_csv(outfile, xyz_obj, overwrite=False, delim=","):
     """
-    total = len(iterable)
+    Writes out a CSV file based on the data in an XYZ object. See RFC 4180 for a description of
+    the csv format.
 
-    # Progress Bar Printing Function
-    def printProgressBar(iteration):
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-        filledLength = int(length * iteration // total)
-        bar = fill * filledLength + '-' * (length - filledLength)
-        print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
-    # Initial Call
-    print()  # Newline before progress bar
-    printProgressBar(0)
-    # Update Progress Bar
-    for i, item in enumerate(iterable):
-        yield item
-        printProgressBar(i + 1)
-    # Print newline and completion message
-    print()
-    print("Complete!")
-
-
-def _write_csv(outfile, xyz_obj, overwrite, delim=","):
-    # See RFC 4180 for a description of the csv format
+    :Params:
+        :outfile (str): The path to the outfile, including extension
+        :xyz_obj (XYZ object): Contains the data to be written
+        :overwrite (bool): Disables overwriting if False; should always be passed, but to be safe
+            this defaults to False, which should prevent any accidental data loss
+        :delim (str): The delimiter string to be used when writing the csv file
+    """
     from csv import writer
-    
     # Safety check outfile (no overwriting without permission!)
-    if os.path.isfile(outfile) and not overwrite:
-        print("File " + outfile +
-              " already exists. Use the --overwrite option if you want to overwrite it.")
-        sys.exit()
+    _overwrite_check(outfile, overwrite)
 
-    print("Writing xyz data to csv file...")
     with open(outfile, 'w', newline='') as file:
         csvwriter = writer(file, delimiter=delim)  # This could fail for weird delimiters
         csvwriter.writerow(["Element", "x", "y", "z"])
-        for site in _progressBar(xyz_obj.sites, prefix="Writing:"):
+        for site in xyz_obj.sites:
             csvwriter.writerow(site)
 
 
 def _write_cel(outfile, xyz_obj, overwrite, deb_dict={}):
-    # See https://er-c.org/barthel/drprobe/celfile.html for a description of the cel format
-    
-    # Safety check outfile (no overwriting without permission!)
-    if os.path.isfile(outfile) and not overwrite:
-        print("File " + outfile +
-              " already exists. Use the --overwrite option if you want to overwrite it.")
-        sys.exit()
+    """
+    Writes out a CEL file based on the data in an XYZ object.  See
+    https://er-c.org/barthel/drprobe/celfile.html for a description of the cel format.
 
-    print("Writing data to cel file...")
+    :Params:
+        :outfile (str): The path to the outfile, including extension
+        :xyz_obj (XYZ object): Contains the data to be written
+        :overwrite (bool): Disables overwriting if False; should always be passed, but to be safe
+            this defaults to False, which should prevent any accidental data loss
+        :deb_dict (dict): A dictionary containing the Debeye-Waller parameters for each element in
+            the XYZ object; NOTE THAT THIS IS CURRENTLY NOT FUNCITONING
+    """
+    # Safety check outfile (no overwriting without permission!)
+    _overwrite_check(outfile, overwrite)
+
     cel_comment = "Number of atoms: " + str(xyz_obj.num_sites) \
         + "; " + xyz_obj.comment_string + "\n"
     a_max, a_min, b_max, b_min, c_max, c_min = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    alpha, beta, gamma = 90, 90, 90  # Not sure if non-ortho coordinates are possible
-    # TODO: test this and find out?
-    for site in _progressBar(xyz_obj.sites, prefix="Calculating span:"):
-        site.append(deb_dict.get(site[0], 0.0))  # Default D-W param is 0
+    alpha, beta, gamma = 90, 90, 90  # Not sure if non-ortho coordinates are possible (or useful)
+    for site in xyz_obj.sites:
+        site = site + tuple([deb_dict.get(site[0], 0.0)])  # Default D-W param is 0
         # TODO: there must be a more elegant way to write this part...
         if site[1] > a_max:
             a_max = site[1]
@@ -195,13 +180,15 @@ def _write_cel(outfile, xyz_obj, overwrite, deb_dict={}):
     # xyz files are in A, but we need spans in nm for cel files
     a_span, b_span, c_span = round(a_span/10, 6), round(b_span/10, 6), round(c_span/10, 6)
 
+    # TODO: Implement D-W params
+
     with open(outfile, 'w') as file:
         file.write(cel_comment)  # The first line in a cel file is a comment string
         header = "0 " + str(a_span) + " " + str(b_span) + " " + str(c_span) + " " \
             + str(alpha) + " " + str(beta) + " " + str(gamma) + "\n"
         file.write(header)  # The second line in a cel file defines its extent
 
-        for site in _progressBar(xyz_obj.sites, prefix="Writing"):
+        for site in xyz_obj.sites:
             x = round((float(site[1])/10 + abs(a_min)) / a_span, 6)
             y = round((float(site[2])/10 + abs(b_min)) / b_span, 6)
             z = round((float(site[3])/10 + abs(c_min)) / c_span, 6)
@@ -209,51 +196,96 @@ def _write_cel(outfile, xyz_obj, overwrite, deb_dict={}):
                 + " 1.0 " + str(site[-1]) + " 0.0 0.0 0.0\n"
             file.write(line)
 
+
+def _overwrite_check(file, flag):
+    """
+    Simply checks that either file does not exist or flag == True, otherwise exits with an error.
+    """
+    if os.path.isfile(file) and not flag:
+        err_str = "File " + file + " already exists. Use the --overwrite option if you want " +\
+                   "to overwrite it."
+        sys.exit(err_str)
+
+
 def _main(opts):
-    for file in opts.infile:
-        # TODO: When non-xyz inputs are supported, this part needs to change
-        # Check that the infile exists (append .xyz if needed) and read in data
-        if not file.endswith(".xyz"):
-            file = file + ".xyz"
-        if not os.path.isfile(file):
-            print("File " + file + " does not exist.")
-            sys.exit()
-        # Create the xyz_obj from the data in infile
+    ################
+    # Read Data In #
+    ################
+    # Handle underspecification error to do with multiple infiles
+    if len(opts.infile) > 1 and opts.outfile is not None:
+        sys.exit("When processing multiple input files, you must not specify any output files " +
+                 "as this leads to ambiguous behavior (their names will be inferred from the " +
+                 "list of input files).")
+    for infile in opts.infile:
+        infile_name, infile_ext = os.path.splitext(infile)
+        # If no extension provided, assume .xyz
+        # TODO: This will need to change when support for other input types is implemented
+        if infile_ext == "":
+            infile_ext = ".xyz"
+        # Check that the file is not something other than .xyz
+        if not infile_ext == ".xyz":
+            sys.exit("This program currently only supports reading from .xyz files.  " +
+                     "Conversion to .xyz from other filetypes is planned.")
+        # Now ext must be correct, so rebuild infile string and make sure it exists
+        infile = infile_name + infile_ext
+        if not os.path.isfile(infile):
+            err_str = "File " + infile + " does not exist."
+            sys.exit(err_str)
+        # Attempt to actually read in the file to create an XYZ object
         try:
-            with open(file) as file:
+            with open(infile) as file:
+                print("Reading data from " + infile)
                 xyz_obj = readXYZ(file)
         except Exception as ex:
-            print("Something went wrong while reading from ", file)
+            print("Something went wrong while reading from ", infile)
             sys.exit(ex.message)
-    
-        # CASE: Outfile was specified as argument
-        if not opts.outfile == "":
-            outfile = opts.outfile
-            # Split off ext; ext handled by out_type
-            outfile_name, outfile_ext = os.path.splitext(outfile)
-            if opts.type is not None:
-                out_type = opts.type
-            # Default to inferring form outfile extension if type not passed
-            else:
-                out_type = outfile_ext.replace(".", "")
-    
-        # CASE: Outfile is not specified; use the same path & name as infile but with new ext
-        else:
-            outfile, _ = os.path.splitext(file)
-            if opts.type is not None:
-                out_type = opts.type
-            # In this scenario, type must be passed.  If it isn't, error and exit.
-            else:
-                print("Output type could not be inferred.  Please specify --type or explicitly define --outfile.")
-                sys.exit()
-    
-        # Write out the data in the correct format
-        # TODO: There's probably a more elegant way to do this too; combine with above?
-        if "csv" in out_type:
-            _write_csv(outfile_name+".csv", xyz_obj, opts.overwrite)
-    
-        if "cel" in out_type:
-            _write_cel(outfile_name+".cel", xyz_obj, opts.overwrite)
+
+        ##################
+        # Write Data Out #
+        ##################
+        if opts.outfile is None:  # Outfile(s) not specified
+            if opts.type is None:
+                sys.exit("You must specify either output type (output file names will be " +
+                         "inferred from input files), or else specify an output file name " +
+                         "(output type will be inferred from the output file extension).")
+            types = opts.type
+            for out_type in types:
+                # With no outfile provided, infer name from infile and extension from type
+                outfile = infile_name + "." + out_type
+                # Call the write function associated with out_type
+                call = "_write_" + out_type
+                # TODO: This doesn't allow specification of filetype-specific params, but it should
+                print("Writing data to " + outfile)
+                globals()[call](outfile, xyz_obj, opts.overwrite)
+
+        else:  # Outfile(s) specified
+            for outfile in opts.outfile:
+                outfile_name, outfile_ext = os.path.splitext(outfile)
+
+                # Types explicitly specified
+                if opts.type is not None:
+                    types = opts.type
+                    for out_type in types:
+                        # If --type specified, this takes precedence over given file extensions
+                        outfile = outfile_name + "." + out_type
+                        call = "_write_" + out_type
+                        print("Writing data to " + outfile)
+                        globals()[call](outfile, xyz_obj, opts.overwrite)
+
+                else:  # Types not explicitly specified (attempt to infer from outfile ext)
+                    out_type = outfile_ext.replace(".", "")
+                    # Error out if type cannot be inferred from extension
+                    if out_type not in ["csv", "cel"] and opts.type is None:
+                        sys.exit("Output type could not be inferred from file extension.  " +
+                                 "Either specify output format using --type or ensure that " +
+                                 "path(s) passed to --outfile end with a valid extension.")
+                    call = "_write_" + out_type
+                    print("Writing data to " + outfile)
+                    globals()[call](outfile, xyz_obj, opts.overwrite)
+        print()  # Line breaks after output loops look nice
+    # Everything was successful!
+    print("Done!")
+    sys.exit(0)  # 0 is the exit code for successful operation
 
 
 # Run main loop iff called from the command line, but not when imported as module
