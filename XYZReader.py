@@ -91,7 +91,7 @@ def _parse_args(args):
     parser = argparse.ArgumentParser(
         description="Convert back and forth from the .xyz file format")
     parser.add_argument("infile", nargs="+", default="",
-                        help="The path to the input file; currently only supports xyz files.  Multiple files can be passed at once for batch conversion.")
+                        help="The path to the input file; currently only supports xyz files.  Multiple files can be passed at once for batch conversion (in this case don't pass an outfile name, let the program infer names).")
     parser.add_argument("--outfile", nargs="?", default="",
                         help="The path to the output file.  If not specified, uses the same path as the input file with a new extension appropriate to --type.")
     parser.add_argument("--type", action="append", nargs="+", choices=["cel", "csv"],
@@ -210,58 +210,50 @@ def _write_cel(outfile, xyz_obj, overwrite, deb_dict={}):
             file.write(line)
 
 def _main(opts):
-    infile = opts.infile[0]
-    # TODO: When non-xyz inputs are supported, this part needs to change
-    # Check that the infile exists (append .xyz if needed) and read in data
-    if not infile.endswith(".xyz"):
-        infile = infile + ".xyz"
-    if not os.path.isfile(infile):
-        print("File " + infile + " does not exist.")
-        sys.exit()
-    # Create the xyz_obj from the data in infile
-    try:
-        with open(infile) as file:
-            xyz_obj = readXYZ(file)
-    except Exception as ex:
-        print("Something went wrong while reading from ", infile)
-        sys.exit(ex.message)
-
-    # CASE: Outfile was specified as argument
-    if not opts.outfile == []:
-        outfile = opts.outfile
-        # Split off ext; ext handled by out_type
-        outfile_name, outfile_ext = os.path.splitext(outfile)
-        if not opts.type == []:
-            out_type = opts.type
-        # Default to inferring form outfile extension if type not passed
-        else:
-            out_type = outfile_ext.replace(".", "")
-
-    # CASE: Outfile is not specified; use the same path & name as infile but with new ext
-    else:
-        outfile, _ = os.path.splitext(infile)
-        if not opts.type == []:
-            out_type = opts.type
-        # In this scenario, type must be passed.  If it isn't, error and exit.
-        else:
-            print("Output type could not be inferred.  Please specify --type or explicitly define --outfile.")
+    for file in opts.infile:
+        # TODO: When non-xyz inputs are supported, this part needs to change
+        # Check that the infile exists (append .xyz if needed) and read in data
+        if not file.endswith(".xyz"):
+            file = file + ".xyz"
+        if not os.path.isfile(file):
+            print("File " + file + " does not exist.")
             sys.exit()
+        # Create the xyz_obj from the data in infile
+        try:
+            with open(file) as file:
+                xyz_obj = readXYZ(file)
+        except Exception as ex:
+            print("Something went wrong while reading from ", file)
+            sys.exit(ex.message)
     
-    # Set out_type
-    #TODO: There's probably a more elegant way to implement this that will be easier to upkeep
-    if out_type == []:
-        if "csv" in outfile_ext:
-            out_type = ["csv"]
-        if "cel" in outfile_ext:
-            out_type = ["cel"]
-
-    # Write out the data in the correct format
-    # TODO: There's probably a more elegant way to do this too; combine with above?
-    if "csv" in out_type:
-        _write_csv(outfile_name+".csv", xyz_obj, opts.overwrite)
-
-    if "cel" in out_type:
-        _write_cel(outfile_name+".cel", xyz_obj, opts.overwrite)
+        # CASE: Outfile was specified as argument
+        if not opts.outfile == "":
+            outfile = opts.outfile
+            # Split off ext; ext handled by out_type
+            outfile_name, outfile_ext = os.path.splitext(outfile)
+            if opts.type is not None:
+                out_type = opts.type
+            # Default to inferring form outfile extension if type not passed
+            else:
+                out_type = outfile_ext.replace(".", "")
+    
+        # CASE: Outfile is not specified; use the same path & name as infile but with new ext
+        else:
+            outfile, _ = os.path.splitext(file)
+            if opts.type is not None:
+                out_type = opts.type
+            # In this scenario, type must be passed.  If it isn't, error and exit.
+            else:
+                print("Output type could not be inferred.  Please specify --type or explicitly define --outfile.")
+                sys.exit()
+    
+        # Write out the data in the correct format
+        # TODO: There's probably a more elegant way to do this too; combine with above?
+        if "csv" in out_type:
+            _write_csv(outfile_name+".csv", xyz_obj, opts.overwrite)
+    
+        if "cel" in out_type:
+            _write_cel(outfile_name+".cel", xyz_obj, opts.overwrite)
 
 
 # Run main loop iff called from the command line, but not when imported as module
