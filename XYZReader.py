@@ -3,8 +3,10 @@ This module reads files in .xyz format.  This file can also be run as a script t
 into several other formats.  Currently supported formats are csv and cel.
 
 :Todo:
+    * Sanity checking of xyz-formatted input
     * Import from other formats and output to xyz
     * Implement other I/O formats (cif, maybe z-matrix)
+    * Implement non-zero biso params for cel output
 """
 ####################
 # Importable Class #
@@ -53,7 +55,7 @@ def readXYZ(file):
     #   - the second line is a comment string
     num_sites = int(lines.pop(0))
     comment_string = lines.pop(0)
-    # The test of the lines in the document contain identities and locations
+    # The rest of the lines in the document contain identities and locations
     #  of atoms
     sites = []
     for line in lines:
@@ -77,7 +79,7 @@ def writeXYZ(xyz_obj, outfile):
     with open(outfile, 'w') as file:
         file.write(xyz_obj.num_sites, "\n")
         file.write(xyz_obj.comment_string, "\n")
-        for site in xyz_obj.sites:  # No prog bar in importable, do it in the script if desired
+        for site in xyz_obj.sites:
             line = " ".join(site) + "\n"
             file.write(line)
 
@@ -106,6 +108,7 @@ def _parse_args(args):
                              "path as the input file with a new extension appropriate to " +
                              "--type.  If multuple infiles are specified, do not use this " +
                              "argument.")
+    # Add additional filetypes to choices as they're implemented
     parser.add_argument("--type", nargs="+", choices=["cel", "csv"],
                         help="The type of file to output; multiple types may be listed at once, " +
                              "or type can be inferred from file extension of --outfile if " +
@@ -113,7 +116,7 @@ def _parse_args(args):
     parser.add_argument("--overwrite", action="store_true",
                         help="Allow file overwriting on output if the output file already " +
                              "exists (default behavior is to not allow overwriting).")
-    # Add additional filetypes to choices as they're implemented
+    # TODO: figure out how to implement biso in a convenient way (for cel output)
     opts = parser.parse_args()
     return opts
 
@@ -158,43 +161,40 @@ def _write_cel(outfile, xyz_obj, overwrite, deb_dict={}):
     _overwrite_check(outfile, overwrite)
 
     cel_comment = "Number of atoms: " + str(xyz_obj.num_sites) \
-        + "; " + xyz_obj.comment_string + "\n"
-    a_max, a_min, b_max, b_min, c_max, c_min = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        + "; " + xyz_obj.comment_string
     alpha, beta, gamma = 90, 90, 90  # Not sure if non-ortho coordinates are possible (or useful)
-    for site in xyz_obj.sites:
-        site = site + tuple([deb_dict.get(site[0], 0.0)])  # Default D-W param is 0
-        # TODO: there must be a more elegant way to write this part...
-        if site[1] > a_max:
-            a_max = site[1]
-        if site[1] < a_min:
-            a_min = site[1]
-        if site[2] > b_max:
-            b_max = site[2]
-        if site[2] < b_min:
-            b_min = site[2]
-        if site[3] > c_max:
-            c_max = site[3]
-        if site[3] < c_min:
-            c_min = site[3]
-    a_span, b_span, c_span = a_max-a_min, b_max-b_min, c_max-c_min
-    # xyz files are in A, but we need spans in nm for cel files
-    a_span, b_span, c_span = round(a_span/10, 6), round(b_span/10, 6), round(c_span/10, 6)
 
-    # TODO: Implement D-W params
+    a_max, a_min = (max([site[1] for site in xyz_obj.sites]),
+                    min([site[1] for site in xyz_obj.sites]))
+    b_max, b_min = (max([site[2] for site in xyz_obj.sites]),
+                    min([site[2] for site in xyz_obj.sites]))
+    c_max, c_min = (max([site[3] for site in xyz_obj.sites]),
+                    min([site[3] for site in xyz_obj.sites]))
+    # xyz files are in A, but we need spans in nm for cel files
+    a_span, b_span, c_span = (round((a_max-a_min)/10, 6),
+                              round((b_max-b_min)/10, 6),
+                              round((c_max-c_min)/10, 6))
+
+    header = (f"{'0' : <4}{a_span : ^9.6f}{b_span : ^9.6f}{c_span : ^9.6f}"
+              + f"{alpha : ^4}{beta : ^4}{gamma : >4}\n")
 
     with open(outfile, 'w') as file:
         file.write(cel_comment)  # The first line in a cel file is a comment string
-        header = "0 " + str(a_span) + " " + str(b_span) + " " + str(c_span) + " " \
-            + str(alpha) + " " + str(beta) + " " + str(gamma) + "\n"
         file.write(header)  # The second line in a cel file defines its extent
 
         for site in xyz_obj.sites:
-            x = round((float(site[1])/10 + abs(a_min)) / a_span, 6)
-            y = round((float(site[2])/10 + abs(b_min)) / b_span, 6)
-            z = round((float(site[3])/10 + abs(c_min)) / c_span, 6)
-            line = site[0] + " " + str(x) + " " + str(y) + " " + str(z) \
-                + " 1.0 " + str(site[-1]) + " 0.0 0.0 0.0\n"
+            e = site[0]
+            x = f"{round((float(site[1])/10 + abs(a_min)) / a_span, 6) : .6f}"
+            y = f"{round((float(site[2])/10 + abs(b_min)) / b_span, 6) : .6f}"
+            z = f"{round((float(site[3])/10 + abs(c_min)) / c_span, 6) : .6f}"
+            b = f"{deb_dict.get(site[0], 0.0) : .6f}"  # Default biso is 0
+
+            line = (f"{e : <3}{x : ^9}{y : ^9}{z : ^9}" +
+                    f"{'1.0' : ^5}{b : ^9}{' 0.0 0.0 0.0' : >11}\n")
             file.write(line)
+
+        # EoF indicator
+        file.write(r"*")
 
 
 def _overwrite_check(file, flag):
@@ -255,6 +255,7 @@ def _main(opts):
                 # Call the write function associated with out_type
                 call = "_write_" + out_type
                 # TODO: This doesn't allow specification of filetype-specific params, but it should
+                #  e.g. for biso params in cel output
                 print("Writing data to " + outfile)
                 globals()[call](outfile, xyz_obj, opts.overwrite)
 
