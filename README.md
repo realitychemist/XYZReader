@@ -35,4 +35,3 @@ This is the style of `.xyz` file supported by the UCSF software [Chimera](https:
  ## Planned Features
  * Output to more file formats (`.cif`, maybe z-matrix)
  * Convert other filetypes to `.xyz`
- * Command line argument version, which does not require user interaction during runtime
