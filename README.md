@@ -33,5 +33,7 @@ This is the style of `.xyz` file supported by the UCSF software [Chimera](https:
  Script mode is meant to be used for in-place conversion to and from `.xyz` files.  It is currently early days for this part of the module.  Currently, it only converts *from* `.xyz`, and supports two output formats: `.csv` and `.cel`.
  
  ## Planned Features
+ * Sanity checking of `.xyz`-formatted input
  * Output to more file formats (`.cif`, maybe z-matrix)
  * Convert other filetypes to `.xyz`
+ * Implement non-zero biso params for `.cel` output
