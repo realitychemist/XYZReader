@@ -3,8 +3,7 @@ This module reads files in .xyz format.  This file can also be run as a script t
 into several other formats.  Currently supported formats are csv and cel.
 
 :Todo:
-    * Sanity checking of xyz-formatted input
-    * Import from other formats and output to xyz
+    * Import from cel/csv
     * Implement other I/O formats (cif, maybe z-matrix)
     * Implement non-zero biso params for cel output
 """
@@ -48,21 +47,53 @@ def readXYZ(file):
     :Returns:
         :XYZ object: An initialized XYZ object containing the information from the file
     """
-    # TODO: Sanity checking (file format is as expected) should be implemented
     lines = file.readlines()
     # .xyz files have two lines before the atomic positions are described:
     #   - the first line is the number of atoms described in the file
     #   - the second line is a comment string
-    num_sites = int(lines.pop(0))
+    # Now with sanity checking!
+
+    err_msg = {"l1": "Malformatted XYZ: first line should contain number of sites, which must " +
+                     "be a positive integer",
+               "sval": "Malformatted XYZ: file contains site coordinates which are not " +
+                       "to floating point",
+               "sid": "Warning: site contains an unrecognized element symbol"}
+    known_elements = ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
+                      "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co",
+                      "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr",
+                      "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",
+                      "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy",
+                      "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au",
+                      "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",
+                      "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db",
+                      "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]
+    try:
+        num_sites = int(lines.pop(0))
+        if num_sites < 0:
+            raise ValueError(err_msg["l1"])
+    except ValueError:
+        print(err_msg["l1"])
+
     comment_string = lines.pop(0)
+    # Probably the most useful thing we can do with the comment string is print it, to help users
+    # tell if something has gone wrong
+    print(f"Reading XYZ file which has the comment string: {comment_string}")
+
     # The rest of the lines in the document contain identities and locations
     #  of atoms
     sites = []
-    for line in lines:
+    for ln, line in enumerate(lines):
         cols = line.split()
         # By default the x, y, z coords will be strings, but we want floats
-        for i in range(1, 4):
-            cols[i] = float(cols[i])
+        try:
+            for i in range(1, 4):
+                cols[i] = float(cols[i])
+        except ValueError:
+            print(err_msg["sval"] + f" on line {ln}: " + line)
+
+        if cols[0] not in known_elements:
+            raise UserWarning(err_msg["sid"] + f" on line {ln}: " + line)
+
         site = tuple(cols)
         sites.append(site)
     return XYZ(num_sites, comment_string, sites)
