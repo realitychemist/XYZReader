@@ -57,7 +57,7 @@ def readXYZ(file):
                      "be a positive integer",
                "sval": "Malformatted XYZ: file contains site coordinates which are not " +
                        "to floating point",
-               "sid": "Warning: site contains an unrecognized element symbol"}
+               "sid": "Site contains an unrecognized element symbol"}
     known_elements = ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
                       "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co",
                       "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr",
