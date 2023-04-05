@@ -36,7 +36,7 @@ class XYZ:
 ########################
 
 
-def readXYZ(file):
+def readXYZ(file, symbol_first=True):
     """
     Reads in an .xyz formatted file, return an instance of XYZ class.
 
@@ -56,7 +56,7 @@ def readXYZ(file):
     err_msg = {"l1": "Malformatted XYZ: first line should contain number of sites, which must " +
                      "be a positive integer",
                "sval": "Malformatted XYZ: file contains site coordinates which are not " +
-                       "to floating point",
+                       "castable to floating point",
                "sid": "Site contains an unrecognized element symbol"}
     known_elements = ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
                       "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co",
@@ -84,15 +84,24 @@ def readXYZ(file):
     sites = []
     for ln, line in enumerate(lines):
         cols = line.split()
+
+        if symbol_first:
+            if cols[0] not in known_elements:
+                raise UserWarning(err_msg["sid"] + f" on line {ln}: " + line)
+        else:  # symbol_last
+            if cols[-1] not in known_elements:
+                raise UserWarning(err_msg["sid"] + f" on line{ln}: " + line)
+
         # By default the x, y, z coords will be strings, but we want floats
         try:
-            for i in range(1, 4):
-                cols[i] = float(cols[i])
+            if symbol_first:
+                for i in range(1, 4):
+                    cols[i] = float(cols[i])
+            else:  # symbol_last
+                for i in range(0, 3):
+                    cols[i] = float(cols[i])
         except ValueError:
             print(err_msg["sval"] + f" on line {ln}: " + line)
-
-        if cols[0] not in known_elements:
-            raise UserWarning(err_msg["sid"] + f" on line {ln}: " + line)
 
         site = tuple(cols)
         sites.append(site)
