@@ -1,1 +1,1 @@
-# Needed to run properly import as module, but nothing happens here
+from XYZReader.XYZReader import XYZ, read_xyz, write_xyz, write_csv, write_cel
