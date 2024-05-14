@@ -1,6 +1,6 @@
 """
 This module reads files in .xyz format.  This file can also be run as a script to convert xyz files
-into several other formats.  Currently supported formats are csv and cel.
+into several other formats.  Currently supported export formats are csv and cel.
 
 :Todo:
     * Import from cel/csv
