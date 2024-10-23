@@ -3,6 +3,9 @@ This module reads files in .xyz format.  This file can also be run as a script t
 into several other formats.  Currently supported export formats are csv and cel.
 
 :Todo:
+    * WHOLE CALL STRUCTURE IS BROKEN!
+    * When CrystalMaker exports XYZ from a structure made of multiple models, each gets its own
+        number of atoms and comment string (blank); must recognize and handle this situation
     * Import from cel/csv
     * Implement other I/O formats (cif, maybe z-matrix)
     * Implement non-zero biso params for cel output
@@ -307,7 +310,7 @@ def _main(opts):
                 # With no outfile provided, infer name from infile and extension from type
                 outfile = infile_name + "." + out_type
                 # Call the write function associated with out_type
-                call = "_write_" + out_type
+                call = "write_" + out_type
                 # TODO: This doesn't allow specification of filetype-specific params, but it should
                 #  e.g. for b_iso params in cel output
                 print("Writing data to " + outfile)
@@ -323,7 +326,7 @@ def _main(opts):
                     for out_type in types:
                         # If --type specified, this takes precedence over given file extensions
                         outfile = outfile_name + "." + out_type
-                        call = "_write_" + out_type
+                        call = "write_" + out_type
                         print("Writing data to " + outfile)
                         globals()[call](outfile, xyz_obj, opts.overwrite)
 
@@ -334,7 +337,7 @@ def _main(opts):
                         sys.exit("Output type could not be inferred from file extension.  " +
                                  "Either specify output format using --type or ensure that " +
                                  "path(s) passed to --outfile end with a valid extension.")
-                    call = "_write_" + out_type
+                    call = "write_" + out_type
                     print("Writing data to " + outfile)
                     globals()[call](outfile, xyz_obj, opts.overwrite)
         print()  # Line breaks after output loops look nice
